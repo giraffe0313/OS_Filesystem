@@ -120,12 +120,14 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     // kprintf("write fd is %d\n", fd);
     // check buffer pointer
     int res;
-    void *dest = kmalloc(nbytes * sizeof(void *));
+    void *dest = kmalloc(nbytes);
     res = copyin(buf, dest, nbytes);
     if (res) {
+        kprintf("error: %d, fd is %d\n", res, fd);
+        kfree(dest);
         return res;
     }
-    
+    kfree(dest);
     // start writing
     struct iovec iov;
     struct uio u;
@@ -139,7 +141,7 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     // kprintf("vn flag is %d\n", curproc->p_file[fd]->flag);
     res = VOP_WRITE(curproc->p_file[fd]->file, &u);
     if (res) {
-        kprintf("res is %d\n", res);
+        kprintf("vop_write res is %d\n", res);
         return res;
     }
     curproc->p_file[fd]->offset = u.uio_offset;
@@ -160,11 +162,11 @@ int sys_close(int fd, int *retval) {
     int ref_count = curproc->p_file[fd]->ref_count;
     if (ref_count == 1) {
         vfs_close(curproc->p_file[fd]->file);
-        // free(curproc->p_file[fd]->file);
-        // free(curproc->p_file[fd]);
+        // kfree(curproc->p_file[fd]->file);
+        kfree(curproc->p_file[fd]);
         curproc->p_file[fd] = NULL;
     } else {
-        curproc->p_file[fd]->ref_count = ref_count - 1;
+        curproc->p_file[fd]->ref_count = ref_count;
     }
     curproc->left_number++;
     return 0;
@@ -184,4 +186,30 @@ int sys_dup2(int oldfd, int newfd, int *retval) {
     return 0;
 }
 
-
+int lseek(int fd, off_t pos, int whence, off_t *retval) {
+    if (curproc->p_file[fd] == NULL) {
+        return EBADF;
+    }
+    kprintf("LSEEK: %d tend to lseek\n", fd);
+    int result;
+    result = VOP_ISSEEKABLE(curproc->p_file[fd]->file);
+    if (!result) {
+        kprintf("LSEEK: %d does not support lseek\n", fd);
+        return ESPIPE;
+    }
+    if (whence == SEEK_SET) {
+        curproc->p_file[fd]->offset = pos;
+    } else if (whence == SEEK_CUR) {
+        curproc->p_file[fd]->offset += pos;
+    } else if (whence == SEEK_END) {
+        struct stat statbuf;
+        result = VOP_STAT(curproc->p_file[fd]->file, &statbuf);
+        curproc->p_file[fd]->offset = statbuf.st_size + pos;
+    } else {
+        return EINVAL;
+    }
+    *retval = curproc->p_file[fd]->offset;
+    kprintf("LSEEK: lseek whence is %d\n", whence);
+    kprintf("LSEEK: result is %lld\n", *retval);
+    return 0;
+}
