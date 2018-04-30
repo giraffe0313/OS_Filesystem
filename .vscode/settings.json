@@ -8,6 +8,8 @@
         "vnode.h": "c",
         "limits.h": "c",
         "iovec.h": "c",
-        "vfs.h": "c"
+        "vfs.h": "c",
+        "copyinout.h": "c",
+        "synch.h": "c"
     }
 }

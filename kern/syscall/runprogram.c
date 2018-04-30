@@ -109,6 +109,10 @@ runprogram(char *progname)
 	ft1 -> flag = 2;
 	ft1 -> ref_count = 1;
 	ft1 -> file = v1;
+	ft1->file_lock = lock_create("file_lock");
+	if(ft1->file_lock == NULL) {
+		return EFAULT;
+	}
 	curproc -> p_file[1] = ft1;
 
 	struct file_table *ft2 = kmalloc(sizeof(struct file_table));
@@ -116,6 +120,10 @@ runprogram(char *progname)
 	ft2 -> flag = 2;
 	ft2 -> ref_count = 1;
 	ft2 -> file = v1;
+	ft2->file_lock = lock_create("file_lock");
+	if(ft2->file_lock == NULL) {
+		return EFAULT;
+	}
 	curproc -> p_file[2] = ft2;
 	// struct file_table file_table1;
 	// file_table1.offset = 0;
