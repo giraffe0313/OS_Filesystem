@@ -48,6 +48,9 @@
 #include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
+#include <limits.h>
+#include <vfs.h>
+#include <kern/fcntl.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -62,6 +65,8 @@ struct proc *
 proc_create(const char *name)
 {
 	struct proc *proc;
+	int i;
+	// int res;
 
 	proc = kmalloc(sizeof(*proc));
 	if (proc == NULL) {
@@ -82,6 +87,40 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
+	/* File table */
+	proc->p_file = kmalloc(__OPEN_MAX * sizeof(struct file_table*));
+	for(i=0; i<__OPEN_MAX; i++) {
+		proc->p_file[i] = NULL;
+	}
+
+	// struct vnode *v;
+	// char con_name[] = "con:";
+	// kprintf("test print!!!!\n");
+	// res = vfs_open(con_name, O_RDWR | O_CREAT, 0, &v);
+	// if (res) {
+	// 	return NULL;
+	// }
+	// struct file_table *ft1 = kmalloc(sizeof(struct file_table));
+	// ft1->offset = 0;
+	// ft1->flag = 2;
+	// ft1->ref_count = 1;
+	// ft1->file = v1;
+	// proc->p_file[1] = ft1;
+
+	// struct vnode *v2;
+	// vfs_open(con_name, 2, 0, &v2);
+	// // if (res)
+	// // {
+	// // 	return res;
+	// // }
+	// struct file_table *ft2 = kmalloc(sizeof(struct file_table));
+	// ft2->offset = 0;
+	// ft2->flag = 2;
+	// ft2->ref_count = 1;
+	// ft2->file = v2;
+	// proc->p_file[2] = ft2;
+
+	proc->left_number = __OPEN_MAX-3;
 	return proc;
 }
 

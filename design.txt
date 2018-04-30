@@ -1,1 +1,31 @@
-Place your design document here.
+Per-process_File_Descriptor_Tables:
+In each process, we initialise a array whose length is the number of files can be opened at the same time firstly. When we open a file, we melloc a memory space to store the file relative structure. 
+
+Open_File_Table:
+The element FILE_TABLE in this table is the file relative structure initialised when opening a file. 
+This structure includes:
+Flag           : the operation we could do, including RDONLY, WRONLY, RDWR.
+Reference_count: how many users share this file. It can be changed by close() or dup2() operation.
+Offset         : the current position in this file. It can be change by read, write or lseek operation.
+Vnode_Pointer  : a pointer points to the vnode.
+
+open(const char *filename, int flags, ..):
+For the open operation, we use copyinstr() to check whether the filename is valid or not because it might belong to the kernel. We also need to check whether the file descriptor table is full or not. If it is not full, we create a FILE_TABLE structure and store the pointer which points to this structure in the file descriptor table, and the index of this pointer is the file descriptor. Then, we use VFS_OPEN to get corresponding vnode and initialise the FILE_TABLE. 
+
+close(int fd):
+According the file descriptor fd we can get the corresponding FILE_TABLE, we need firstly minus Reference_count by 1. if the result equals to 0, we use VFS_CLOSE to close it.
+
+read(int fd, void *buf, size_t buflen):
+Firstly, we use copyin() to check the address of buffer is valid or not and also check whether this file can be read. If read operation is valid, we get offset number from corresponding FILE_TABLE and use this number and passed in arguments to initialise bio structure. Than we use VOP_READ to get result and update offset value.
+
+write(int fd, const void *buf, size_t nbytes):
+This operation is just like read, instead of using VOP_WRITE to get the result.
+
+lseek(int fd, off_t pos, int whence):
+Firstly, we use vop_isseekable to check if this file is seekable, and then according to pos to change offset. but if pos is SEEK_END, we need to use VOP_STAT() to get end position.
+
+dup2(int oldfd, int newfd):
+We also need check whether the oldfd and newfd is valid or not. If these two arguments are valid, we copy the pointer in oldfd to newfd and then add one to FILE_TABLE's Reference_count.
+
+If any operation is failed, we return -1 and set errno to corresponding error value.
+

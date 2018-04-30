@@ -96,6 +96,42 @@ runprogram(char *progname)
 		/* p_addrspace will go away when curproc is destroyed */
 		return result;
 	}
+	/* init std file. */
+	struct vnode *v1;
+	char con_name[] = "con:";
+	result = vfs_open(con_name, O_RDWR, 0, &v1);
+	if (result)
+	{
+		return result;
+	}
+	struct file_table *ft1 = kmalloc(sizeof(struct file_table));
+	ft1 -> offset = 0;
+	ft1 -> flag = 2;
+	ft1 -> ref_count = 1;
+	ft1 -> file = v1;
+	curproc -> p_file[1] = ft1;
+
+	struct file_table *ft2 = kmalloc(sizeof(struct file_table));
+	ft2 -> offset = 0;
+	ft2 -> flag = 2;
+	ft2 -> ref_count = 1;
+	ft2 -> file = v1;
+	curproc -> p_file[2] = ft2;
+	// struct file_table file_table1;
+	// file_table1.offset = 0;
+	// file_table1.flag = 2;
+	// file_table1.ref_count = 1;
+	// file_table1.file = v1;
+	// struct file_table *ft1 = &file_table1;
+	// curproc->p_file[1] = ft1;
+
+	// struct file_table file_table2;
+	// file_table2.offset = 0;
+	// file_table2.flag = 2;
+	// file_table2.ref_count = 1;
+	// file_table2.file = v1;
+	// struct file_table *ft2 = &file_table2;
+	// curproc->p_file[2] = ft2;
 
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,

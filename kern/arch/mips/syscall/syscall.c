@@ -35,6 +35,7 @@
 #include <thread.h>
 #include <current.h>
 #include <syscall.h>
+#include <file.h>
 
 
 /*
@@ -109,6 +110,30 @@ syscall(struct trapframe *tf)
 				 (userptr_t)tf->tf_a1);
 		break;
 
+		case SYS_open:
+		err = sys_open((const_userptr_t)tf->tf_a0, tf->tf_a1, 
+						(mode_t)tf->tf_a2, &retval);
+		// kprintf("retval is %d\n", retval);
+		break;
+		case SYS_read:
+		err = sys_read(tf->tf_a0, (void *)tf->tf_a1, 
+						tf->tf_a2, &retval);
+
+		break;
+		case SYS_write:
+		err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2, &retval);
+		break;
+
+		case SYS_close:
+		err = sys_close(tf->tf_a0, &retval);
+		break;
+
+		case SYS_dup2:
+		err = sys_dup2(tf->tf_a0, tf->tf_a1, &retval);
+		break;
+
+		case SYS_lseek:
+		err = lseek
 	    /* Add stuff here */
 
 	    default:
@@ -129,6 +154,7 @@ syscall(struct trapframe *tf)
 	}
 	else {
 		/* Success. */
+		kprintf("success value is %d\n", retval);
 		tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
 	}

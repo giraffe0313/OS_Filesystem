@@ -1,5 +1,13 @@
 {
     "files.associations": {
-        "types.h": "c"
+        "types.h": "c",
+        "lib.h": "c",
+        "uio.h": "c",
+        "proc.h": "c",
+        "current.h": "c",
+        "vnode.h": "c",
+        "limits.h": "c",
+        "iovec.h": "c",
+        "vfs.h": "c"
     }
 }
