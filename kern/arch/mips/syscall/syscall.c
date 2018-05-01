@@ -136,7 +136,7 @@ syscall(struct trapframe *tf)
 		break;
 
 		case SYS_lseek:
-		kprintf("catch LSEEK!!!!\n");
+		;
 		uint64_t offset;
 		int whence;
 		off_t retval64;
@@ -145,7 +145,8 @@ syscall(struct trapframe *tf)
 		lseek_flag = 1;
 		err = lseek(tf->tf_a0, offset, whence, &retval64);
 		split64to32(retval64, &tf->tf_v0, &tf->tf_v1);
-
+		tf->tf_a3 = 0;
+		break;
 
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
@@ -166,7 +167,6 @@ syscall(struct trapframe *tf)
 	else {
 		/* Success. */
 		if (!lseek_flag) {
-			kprintf("success value is %d\n", retval);
 			tf->tf_v0 = retval;
 			tf->tf_a3 = 0;      /* signal no error */
 		}

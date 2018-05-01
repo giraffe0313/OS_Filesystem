@@ -140,8 +140,10 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     struct uio u;
     off_t offset = curproc->p_file[fd]->offset;
     // struct vnode *vur_v = curproc->p_file[fd]->file;
-    kprintf("WRITE: write fd is %d\n", fd);
-    kprintf("WRITE: begin offset is %lld\n", offset);
+    if (fd > 2) {
+        kprintf("WRITE: write fd is %d\n", fd);
+        kprintf("WRITE: begin offset is %lld\n", offset);
+    }
     uio_uinit(&iov, &u, buf, nbytes, offset, UIO_WRITE);
     
     // kprintf("vn refcount is %d\n", curproc->p_file[fd]->file == NULL);
@@ -156,8 +158,10 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     *retval = u.uio_offset - offset;
     lock_release(curproc->p_file[fd]->file_lock);     //lock
     // kprintf("offset is %lld\n", curproc->p_file[fd]->offset);
-    kprintf("WRITE: write length is %d\n", *retval);
-    kprintf("WRITE: end offset is %lld\n", curproc->p_file[fd]->offset);
+    if (fd > 2) {
+        kprintf("WRITE: write length is %d\n", *retval);
+        kprintf("WRITE: end offset is %lld\n", curproc->p_file[fd]->offset);
+    }
 
     return 0;
 }
@@ -175,7 +179,7 @@ int sys_close(int fd, int *retval) {
         kfree(curproc->p_file[fd]);
         curproc->p_file[fd] = NULL;
     } else {
-        curproc->p_file[fd]->ref_count = ref_count;
+        curproc->p_file[fd]->ref_count = ref_count - 1;
     }
     curproc->left_number++;
     return 0;
@@ -202,7 +206,7 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
     if (curproc->p_file[fd] == NULL) {
         return EBADF;
     }
-    kprintf("LSEEK: %d tend to lseek\n", fd);
+    kprintf("LSEEK: lseek fd is %d\n", fd);
     int result;
     result = VOP_ISSEEKABLE(curproc->p_file[fd]->file);
     if (!result) {
@@ -221,6 +225,7 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
         return EINVAL;
     }
     *retval = curproc->p_file[fd]->offset;
+    kprintf("LSEEK: lseek pos is %lld\n", pos);
     kprintf("LSEEK: lseek whence is %d\n", whence);
     kprintf("LSEEK: result is %lld\n", *retval);
     return 0;
