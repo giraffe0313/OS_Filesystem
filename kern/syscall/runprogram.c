@@ -111,6 +111,7 @@ runprogram(char *progname)
 	ft1 -> file = v1;
 	ft1->file_lock = lock_create("file_lock");
 	if(ft1->file_lock == NULL) {
+		kprintf("acquair lock failed\n");
 		return EFAULT;
 	}
 	curproc -> p_file[1] = ft1;
