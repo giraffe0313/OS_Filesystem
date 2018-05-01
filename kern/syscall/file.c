@@ -171,9 +171,8 @@ int sys_close(int fd, int *retval) {
     if (ref_count == 1) {
         vfs_close(curproc->p_file[fd]->file);
         // kfree(curproc->p_file[fd]->file);
-        kfree(curproc->p_file[fd]);
-
         lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
+        kfree(curproc->p_file[fd]);
         curproc->p_file[fd] = NULL;
     } else {
         curproc->p_file[fd]->ref_count = ref_count;
