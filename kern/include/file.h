@@ -12,6 +12,7 @@
 #include <kern/unistd.h>
 #include <types.h>
 #include <uio.h>
+#include <synch.h>
 // #include <kern/fcntl.h>
 
 typedef long long off_t;
@@ -31,6 +32,7 @@ struct file_table {
     enum flag_type flag;
     int ref_count;
     struct vnode* file;
+    struct lock* file_lock;
 };
 
 /*

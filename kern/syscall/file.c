@@ -22,8 +22,6 @@
  * Add your file-related functions here ...
  */
 
-
-
 int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
     
@@ -54,7 +52,7 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     ft->flag = flags;
     ft->ref_count = 1;
     ft->file = v;
-    ft->file_lock = lock_create("file_lock")      // init lock
+    ft->file_lock = lock_create("file_lock");      // init lock
     if (ft->file_lock == NULL) {
         return EFAULT;
     }
@@ -172,7 +170,7 @@ int sys_close(int fd, int *retval) {
         // free(curproc->p_file[fd]->file);
         // free(curproc->p_file[fd]);
 
-        lock_destroy(curproc->p_file[fd]->file_lock)    //free lock
+        lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
         curproc->p_file[fd] = NULL;
     } else {
         curproc->p_file[fd]->ref_count = ref_count - 1;
