@@ -145,7 +145,7 @@ syscall(struct trapframe *tf)
 		lseek_flag = 1;
 		err = lseek(tf->tf_a0, offset, whence, &retval64);
 		split64to32(retval64, &tf->tf_v0, &tf->tf_v1);
-	    /* Add stuff here */
+
 
 	    default:
 		kprintf("Unknown syscall %d\n", callno);

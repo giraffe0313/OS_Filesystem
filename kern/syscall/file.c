@@ -15,12 +15,12 @@
 #include <syscall.h>
 #include <copyinout.h>
 #include <proc.h>
+#include <synch.h>
+// static struct lock *file_lock;
 
 /*
  * Add your file-related functions here ...
  */
-
-
 
 int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
@@ -52,6 +52,10 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     ft->flag = flags;
     ft->ref_count = 1;
     ft->file = v;
+    ft->file_lock = lock_create("file_lock");      // init lock
+    if (ft->file_lock == NULL) {
+        return EFAULT;
+    }
     while (curproc->p_file[i] != NULL) {
         i++;
     }
@@ -88,7 +92,7 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
     {
         return res;
     }
-    
+    lock_acquire(curproc->p_file[fd]->file_lock); // lock
     // start writing
     struct iovec iov;
     struct uio u;
@@ -101,10 +105,12 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
     res = VOP_READ(vur_v, &u);
     if (res) {
         kprintf("read res is %d\n", res);
+        lock_release(curproc->p_file[fd]->file_lock); //lock
         return res;
     }
     curproc->p_file[fd]->offset = u.uio_offset;
     *retval = u.uio_offset - offset;
+    lock_release(curproc->p_file[fd]->file_lock); //lock
 
     kprintf("READ: read length is %d\n", *retval);
     kprintf("READ: end offset is %lld\n", curproc->p_file[fd]->offset);
@@ -128,6 +134,7 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
         return res;
     }
     kfree(dest);
+    lock_acquire(curproc->p_file[fd]->file_lock);  //lock
     // start writing
     struct iovec iov;
     struct uio u;
@@ -142,11 +149,12 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     res = VOP_WRITE(curproc->p_file[fd]->file, &u);
     if (res) {
         kprintf("vop_write res is %d\n", res);
+        lock_release(curproc->p_file[fd]->file_lock);  //lock
         return res;
     }
     curproc->p_file[fd]->offset = u.uio_offset;
     *retval = u.uio_offset - offset;
-
+    lock_release(curproc->p_file[fd]->file_lock);     //lock
     // kprintf("offset is %lld\n", curproc->p_file[fd]->offset);
     kprintf("WRITE: write length is %d\n", *retval);
     kprintf("WRITE: end offset is %lld\n", curproc->p_file[fd]->offset);
@@ -162,8 +170,15 @@ int sys_close(int fd, int *retval) {
     int ref_count = curproc->p_file[fd]->ref_count;
     if (ref_count == 1) {
         vfs_close(curproc->p_file[fd]->file);
+<<<<<<< HEAD
         // kfree(curproc->p_file[fd]->file);
         kfree(curproc->p_file[fd]);
+=======
+        // free(curproc->p_file[fd]->file);
+        // free(curproc->p_file[fd]);
+
+        lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
+>>>>>>> lock
         curproc->p_file[fd] = NULL;
     } else {
         curproc->p_file[fd]->ref_count = ref_count;
@@ -179,8 +194,11 @@ int sys_dup2(int oldfd, int newfd, int *retval) {
     if (!curproc->left_number) {
         return EMFILE;
     }
+
+
     struct file_table *ft = curproc->p_file[oldfd];
     curproc->p_file[newfd] = ft;
+    
     ft->ref_count++;
     *retval = newfd;
     return 0;
