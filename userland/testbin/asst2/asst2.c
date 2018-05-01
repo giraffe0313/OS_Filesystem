@@ -15,6 +15,7 @@ int
 main(int argc, char * argv[])
 {
         int fd, r, i, j , k;
+        int fd1;
         (void) argc;
         (void) argv;
 
@@ -52,13 +53,13 @@ main(int argc, char * argv[])
         close(fd);
 
         printf("**********\n* opening old file \"test.file\"\n");
-        fd = open("test.file", O_RDONLY);
+        fd1 = open("test.file", O_RDONLY);
         printf("* open() got fd %d\n", fd);
         if (fd < 0) {
                 printf("ERROR opening file: %s\n", strerror(errno));
                 exit(1);
         }
-
+        fd = dup2(fd1, 4);
         printf("* reading entire file into buffer \n");
         i = 0;
         do  {
@@ -86,7 +87,7 @@ main(int argc, char * argv[])
         printf("* file content okay\n");
 
         printf("**********\n* testing lseek\n");
-        r = lseek(fd, 5, SEEK_END);
+        r = lseek(fd, 5, SEEK_SET);
         if (r < 0) {
                 printf("ERROR lseek: %s\n", strerror(errno));
                 exit(1);

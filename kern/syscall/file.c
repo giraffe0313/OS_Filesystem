@@ -25,9 +25,8 @@
 int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
 {
     
-    // process table is full
+    // process file table is full
     if (curproc->left_number == 0) {
-        kprintf("Open: There is no space for open\n");
         return EMFILE;
     }
     // check if filename is valid
@@ -40,7 +39,7 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     }
     kprintf("OPEN: open path is %s\n", name);
 
-
+    // init vnode and create file pointer in process file table
     struct vnode* v;
     int i = 3;
     res = vfs_open(name, flags, mode, &v);
@@ -63,9 +62,34 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     curproc->p_file[i] = ft;
     curproc->left_number--;
     *retval = i;
+    kfree(name);
     kprintf("OPEN: return fd is %d\n", *retval);
     return 0;
 }
+
+
+int sys_close(int fd, int *retval) {
+    if (!curproc->p_file[fd]) {
+        *retval = EBADF;
+        return -1;
+    }
+    int ref_count = curproc->p_file[fd]->ref_count;
+    if (ref_count == 1) {
+        vfs_close(curproc->p_file[fd]->file);
+        lock_destroy(curproc->p_file[fd]->file_lock_refcount);
+        lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
+        kfree(curproc->p_file[fd]);
+        curproc->p_file[fd] = NULL;
+    } else {
+        lock_acquire(curproc->p_file[fd]->file_lock_refcount);
+        curproc->p_file[fd]->ref_count = ref_count - 1;
+        lock_release(curproc->p_file[fd]->file_lock_refcount);
+
+    }
+    curproc->left_number++;
+    return 0;
+}
+
 
 void uio_uinit(struct iovec *iov, struct uio *u, userptr_t buf,
           size_t len, off_t offset, enum uio_rw rw)
@@ -82,17 +106,19 @@ void uio_uinit(struct iovec *iov, struct uio *u, userptr_t buf,
 }
 
 int sys_read(int fd, void *buf, size_t buflen, int *retval) {
-    
+    //check if file exits and authority 
     if (curproc->p_file[fd] == NULL || curproc->p_file[fd]->flag == 1) {
         return EBADF;
     }
     int res;
-    void *dest = kmalloc(buflen * sizeof(void *));
+    // check if pointer is valid
+    void *dest = kmalloc(buflen);
     res = copyin(buf, dest, buflen);
-    if (res)
-    {
+    if (res) {
+        kfree(dest);
         return res;
     }
+    kfree(dest);
     lock_acquire(curproc->p_file[fd]->file_lock); // lock
     // start writing
     struct iovec iov;
@@ -119,12 +145,13 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
     return 0;
 }
 
+
+
 int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
-    // check file descriptor
+    //check if file exits and authority 
     if (curproc->p_file[fd] == NULL || curproc->p_file[fd]->flag == 0) {
         return EBADF;
     }
-    // kprintf("write fd is %d\n", fd);
     // check buffer pointer
     int res;
     void *dest = kmalloc(nbytes);
@@ -140,16 +167,13 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     struct iovec iov;
     struct uio u;
     off_t offset = curproc->p_file[fd]->offset;
-    // struct vnode *vur_v = curproc->p_file[fd]->file;
+    struct vnode *vur_v = curproc->p_file[fd]->file;
     if (fd > 2) {
         kprintf("WRITE: write fd is %d\n", fd);
         kprintf("WRITE: begin offset is %lld\n", offset);
     }
     uio_uinit(&iov, &u, buf, nbytes, offset, UIO_WRITE);
-    
-    // kprintf("vn refcount is %d\n", curproc->p_file[fd]->file == NULL);
-    // kprintf("vn flag is %d\n", curproc->p_file[fd]->flag);
-    res = VOP_WRITE(curproc->p_file[fd]->file, &u);
+    res = VOP_WRITE(vur_v, &u);
     if (res) {
         kprintf("vop_write res is %d\n", res);
         lock_release(curproc->p_file[fd]->file_lock);  //lock
@@ -167,45 +191,18 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     return 0;
 }
 
-int sys_close(int fd, int *retval) {
-    if (!curproc->p_file[fd]) {
-        *retval = EBADF;
-        return -1;
-    }
-    
-    int ref_count = curproc->p_file[fd]->ref_count;
-    if (ref_count == 1) {
-        vfs_close(curproc->p_file[fd]->file);
-        // kfree(curproc->p_file[fd]->file);
-        // kfree(curproc->p_file[fd]);
-        // lock_release(curproc->p_file[fd]->file_lock_refcount);
-
-        lock_destroy(curproc->p_file[fd]->file_lock_refcount);
-        lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
-        kfree(curproc->p_file[fd]);
-        curproc->p_file[fd] = NULL;
-    } else {
-        lock_acquire(curproc->p_file[fd]->file_lock_refcount);
-        curproc->p_file[fd]->ref_count = ref_count - 1;
-        lock_release(curproc->p_file[fd]->file_lock_refcount);
-
-    }
-    curproc->left_number++;
-    return 0;
-}
-
 int sys_dup2(int oldfd, int newfd, int *retval) {
+    // check file descriptor 
     if (curproc->p_file[oldfd] == NULL || curproc->p_file[newfd] != NULL) {
         return EBADF;
     }
     if (!curproc->left_number) {
         return EMFILE;
     }
-
+    // assign old process file pointer to the new one
     struct file_table *ft = curproc->p_file[oldfd];
     curproc->p_file[newfd] = ft;
     lock_acquire(curproc->p_file[newfd]->file_lock_refcount);
-
     ft->ref_count++;
     *retval = newfd;
     lock_release(curproc->p_file[newfd]->file_lock_refcount);

@@ -17,14 +17,11 @@
 
 typedef long long off_t;
 
-// #define O_RDONLY 0 /* Open for read */
-// #define O_WRONLY 1 /* Open for write */
-// #define O_RDWR 2   /* Open for read and write */
 
 enum flag_type {
-    O_RDONLY_FLAG,
-    O_WRONLY_FLAG,
-    O_RDWR_FLAG,
+    O_RDONLY_FLAG,   /* Open for read */
+    O_WRONLY_FLAG,   /* Open for write */
+    O_RDWR_FLAG,     /* Open for read and write */
 };
 
 struct file_table {

@@ -93,34 +93,7 @@ proc_create(const char *name)
 		proc->p_file[i] = NULL;
 	}
 
-	// struct vnode *v;
-	// char con_name[] = "con:";
-	// kprintf("test print!!!!\n");
-	// res = vfs_open(con_name, O_RDWR | O_CREAT, 0, &v);
-	// if (res) {
-	// 	return NULL;
-	// }
-	// struct file_table *ft1 = kmalloc(sizeof(struct file_table));
-	// ft1->offset = 0;
-	// ft1->flag = 2;
-	// ft1->ref_count = 1;
-	// ft1->file = v1;
-	// proc->p_file[1] = ft1;
-
-	// struct vnode *v2;
-	// vfs_open(con_name, 2, 0, &v2);
-	// // if (res)
-	// // {
-	// // 	return res;
-	// // }
-	// struct file_table *ft2 = kmalloc(sizeof(struct file_table));
-	// ft2->offset = 0;
-	// ft2->flag = 2;
-	// ft2->ref_count = 1;
-	// ft2->file = v2;
-	// proc->p_file[2] = ft2;
-
-	proc->left_number = __OPEN_MAX-3;
+	proc->left_number = __OPEN_MAX - 3;
 	return proc;
 }
 
@@ -207,6 +180,18 @@ proc_destroy(struct proc *proc)
 	KASSERT(proc->p_numthreads == 0);
 	spinlock_cleanup(&proc->p_lock);
 
+	/* free stdout space */
+	lock_destroy(proc->p_file[1]->file_lock_refcount);
+	lock_destroy(proc->p_file[1]->file_lock);    //free lock
+	kfree(proc->p_file[1]);
+
+	/* free stderr space */
+	lock_destroy(proc->p_file[2]->file_lock_refcount);
+	lock_destroy(proc->p_file[2]->file_lock);    //free lock
+	kfree(proc->p_file[2]);
+
+	/* free process file table space */
+	kfree(proc->p_file);
 	kfree(proc->p_name);
 	kfree(proc);
 }

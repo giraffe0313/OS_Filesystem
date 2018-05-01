@@ -71,8 +71,9 @@ struct proc {
 	/* VFS */
 	struct vnode *p_cwd;		/* current working directory */
 
-	struct file_table **p_file;
-	int left_number;
+	/* Process file table */
+	struct file_table **p_file;  /* file table pointer */
+	int left_number;			 /* Number of files can be open */
 	/* add more material here as needed */
 };
 
