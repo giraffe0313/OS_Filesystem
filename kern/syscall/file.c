@@ -52,8 +52,9 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     ft->flag = flags;
     ft->ref_count = 1;
     ft->file = v;
+    ft->file_lock_refcount = lock_create("file_lock_refcount");
     ft->file_lock = lock_create("file_lock");      // init lock
-    if (ft->file_lock == NULL) {
+    if (ft->file_lock == NULL || ft->file_lock_refcount == NULL){
         return EFAULT;
     }
     while (curproc->p_file[i] != NULL) {
@@ -167,18 +168,22 @@ int sys_close(int fd, int *retval) {
         *retval = EBADF;
         return -1;
     }
+    lock_acquire(curproc->p_file[fd]->file_lock_refcount);
     int ref_count = curproc->p_file[fd]->ref_count;
     if (ref_count == 1) {
         vfs_close(curproc->p_file[fd]->file);
         // kfree(curproc->p_file[fd]->file);
         kfree(curproc->p_file[fd]);
+        lock_release(curproc->p_file[fd]->file_lock_refcount);
 
+        lock_destroy(curproc->p_file[fd]->file_lock_refcount);
         lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
         curproc->p_file[fd] = NULL;
     } else {
-        curproc->p_file[fd]->ref_count = ref_count;
+        curproc->p_file[fd]->ref_count = ref_count - 1;
     }
     curproc->left_number++;
+    lock_release(curproc->p_file[fd]->file_lock_refcount);
     return 0;
 }
 
@@ -190,12 +195,13 @@ int sys_dup2(int oldfd, int newfd, int *retval) {
         return EMFILE;
     }
 
-
     struct file_table *ft = curproc->p_file[oldfd];
     curproc->p_file[newfd] = ft;
-    
+    lock_acquire(curproc->p_file[newfd]->file_lock_refcount);
+
     ft->ref_count++;
     *retval = newfd;
+    lock_release(curproc->p_file[newfd]->file_lock_refcount);
     return 0;
 }
 
@@ -210,6 +216,7 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
         kprintf("LSEEK: %d does not support lseek\n", fd);
         return ESPIPE;
     }
+    lock_acquire(curproc->p_file[fd]->file_lock);
     if (whence == SEEK_SET) {
         curproc->p_file[fd]->offset = pos;
     } else if (whence == SEEK_CUR) {
@@ -219,9 +226,11 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
         result = VOP_STAT(curproc->p_file[fd]->file, &statbuf);
         curproc->p_file[fd]->offset = statbuf.st_size + pos;
     } else {
+        lock_release(curproc->p_file[fd]->file_lock);
         return EINVAL;
     }
     *retval = curproc->p_file[fd]->offset;
+    lock_release(curproc->p_file[fd]->file_lock);
     kprintf("LSEEK: lseek whence is %d\n", whence);
     kprintf("LSEEK: result is %lld\n", *retval);
     return 0;

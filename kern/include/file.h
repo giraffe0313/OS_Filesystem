@@ -33,6 +33,7 @@ struct file_table {
     int ref_count;
     struct vnode* file;
     struct lock* file_lock;
+    struct lock* file_lock_refcount;
 };
 
 /*
