@@ -113,7 +113,6 @@ runprogram(char *progname)
 	ft1->file_lock_refcount = lock_create("file_lock_refcount");
 	ft1->file_lock = lock_create("file_lock");
 	if(ft1->file_lock == NULL) {
-		kprintf("acquair lock failed\n");
 		return EFAULT;
 	}
 	curproc -> p_file[1] = ft1;
@@ -130,7 +129,7 @@ runprogram(char *progname)
 		return EFAULT;
 	}
 	curproc -> p_file[2] = ft2;
-	
+
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  NULL /*userspace addr of environment*/,

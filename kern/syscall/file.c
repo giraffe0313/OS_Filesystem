@@ -37,7 +37,6 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     if (res) {
         return res;
     }
-    kprintf("OPEN: open path is %s\n", name);
 
     // init vnode and create file pointer in process file table
     struct vnode* v;
@@ -63,7 +62,6 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     curproc->left_number--;
     *retval = i;
     kfree(name);
-    kprintf("OPEN: return fd is %d\n", *retval);
     return 0;
 }
 
@@ -124,24 +122,17 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
     struct iovec iov;
     struct uio u;
     off_t offset = curproc->p_file[fd]->offset;
-    kprintf("READ: read fd is %d\n", fd);
-    kprintf("READ: begin offset is %lld\n", offset);
     struct vnode *vur_v = curproc->p_file[fd]->file;
     uio_uinit(&iov, &u, buf, buflen, offset, UIO_READ);
 
     res = VOP_READ(vur_v, &u);
     if (res) {
-        kprintf("read res is %d\n", res);
         lock_release(curproc->p_file[fd]->file_lock); //lock
         return res;
     }
     curproc->p_file[fd]->offset = u.uio_offset;
     *retval = u.uio_offset - offset;
     lock_release(curproc->p_file[fd]->file_lock); //lock
-
-    kprintf("READ: read length is %d\n", *retval);
-    kprintf("READ: end offset is %lld\n", curproc->p_file[fd]->offset);
-    kprintf("READ: test length is %d\n", buflen - u.uio_resid);        
     return 0;
 }
 
@@ -157,7 +148,6 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     void *dest = kmalloc(nbytes);
     res = copyin(buf, dest, nbytes);
     if (res) {
-        kprintf("error: %d, fd is %d\n", res, fd);
         kfree(dest);
         return res;
     }
@@ -168,25 +158,15 @@ int sys_write(int fd, userptr_t buf, size_t nbytes, int *retval) {
     struct uio u;
     off_t offset = curproc->p_file[fd]->offset;
     struct vnode *vur_v = curproc->p_file[fd]->file;
-    if (fd > 2) {
-        kprintf("WRITE: write fd is %d\n", fd);
-        kprintf("WRITE: begin offset is %lld\n", offset);
-    }
     uio_uinit(&iov, &u, buf, nbytes, offset, UIO_WRITE);
     res = VOP_WRITE(vur_v, &u);
     if (res) {
-        kprintf("vop_write res is %d\n", res);
         lock_release(curproc->p_file[fd]->file_lock);  //lock
         return res;
     }
     curproc->p_file[fd]->offset = u.uio_offset;
     *retval = u.uio_offset - offset;
     lock_release(curproc->p_file[fd]->file_lock);     //lock
-    // kprintf("offset is %lld\n", curproc->p_file[fd]->offset);
-    if (fd > 2) {
-        kprintf("WRITE: write length is %d\n", *retval);
-        kprintf("WRITE: end offset is %lld\n", curproc->p_file[fd]->offset);
-    }
 
     return 0;
 }
@@ -213,11 +193,9 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
     if (curproc->p_file[fd] == NULL) {
         return EBADF;
     }
-    kprintf("LSEEK: test lseek fd is %d\n", fd);
     int result;
     result = VOP_ISSEEKABLE(curproc->p_file[fd]->file);
     if (!result) {
-        kprintf("LSEEK: %d does not support lseek\n", fd);
         return ESPIPE;
     }
     lock_acquire(curproc->p_file[fd]->file_lock);
@@ -234,9 +212,6 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
         return EINVAL;
     }
     *retval = curproc->p_file[fd]->offset;
-    kprintf("LSEEK: lseek pos is %lld\n", pos);
     lock_release(curproc->p_file[fd]->file_lock);
-    kprintf("LSEEK: lseek whence is %d\n", whence);
-    kprintf("LSEEK: result is %lld\n", *retval);
     return 0;
 }
