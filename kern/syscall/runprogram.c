@@ -113,7 +113,7 @@ runprogram(char *progname)
 	ft1->file_lock_refcount = lock_create("file_lock_refcount");
 	ft1->file_lock = lock_create("file_lock");
 	if(ft1->file_lock == NULL) {
-		return EFAULT;
+		return ENOMEM;
 	}
 	curproc -> p_file[1] = ft1;
 
@@ -126,7 +126,7 @@ runprogram(char *progname)
 	ft2->file_lock_refcount = lock_create("file_lock_refcount");
 	ft2->file_lock = lock_create("file_lock");
 	if(ft2->file_lock == NULL) {
-		return EFAULT;
+		return ENOMEM;
 	}
 	curproc -> p_file[2] = ft2;
 

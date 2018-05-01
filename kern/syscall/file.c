@@ -43,8 +43,10 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     int i = 3;
     res = vfs_open(name, flags, mode, &v);
     if (res) {
+        kfree(name);
         return res;
     }
+    kfree(name);
     struct file_table *ft = kmalloc(sizeof(struct file_table));
     ft->offset = 0;
     ft->flag = flags;
@@ -53,15 +55,25 @@ int sys_open(const_userptr_t filename, int flags, mode_t mode, int *retval)
     ft->file_lock_refcount = lock_create("file_lock_refcount");
     ft->file_lock = lock_create("file_lock");      // init lock
     if (ft->file_lock == NULL || ft->file_lock_refcount == NULL){
-        return EFAULT;
+        return ENOMEM;
     }
+    lock_acquire(ft->file_lock);
     while (curproc->p_file[i] != NULL) {
         i++;
+    }
+    /* process file table is full */
+    if (i == __OPEN_MAX - 1) {
+        lock_release(ft->file_lock);
+        lock_destroy(ft->file_lock_refcount);
+        lock_destroy(ft->file_lock);
+        kfree(ft);
+        return EMFILE;
     }
     curproc->p_file[i] = ft;
     curproc->left_number--;
     *retval = i;
-    kfree(name);
+    lock_release(ft->file_lock);
+
     return 0;
 }
 
