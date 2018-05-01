@@ -172,23 +172,25 @@ int sys_close(int fd, int *retval) {
         *retval = EBADF;
         return -1;
     }
-    lock_acquire(curproc->p_file[fd]->file_lock_refcount);
+    
     int ref_count = curproc->p_file[fd]->ref_count;
     if (ref_count == 1) {
         vfs_close(curproc->p_file[fd]->file);
         // kfree(curproc->p_file[fd]->file);
         // kfree(curproc->p_file[fd]);
-        lock_release(curproc->p_file[fd]->file_lock_refcount);
+        // lock_release(curproc->p_file[fd]->file_lock_refcount);
 
         lock_destroy(curproc->p_file[fd]->file_lock_refcount);
         lock_destroy(curproc->p_file[fd]->file_lock);    //free lock
         kfree(curproc->p_file[fd]);
         curproc->p_file[fd] = NULL;
     } else {
+        lock_acquire(curproc->p_file[fd]->file_lock_refcount);
         curproc->p_file[fd]->ref_count = ref_count - 1;
+        lock_release(curproc->p_file[fd]->file_lock_refcount);
+
     }
     curproc->left_number++;
-    lock_release(curproc->p_file[fd]->file_lock_refcount);
     return 0;
 }
 
@@ -214,7 +216,7 @@ int lseek(int fd, off_t pos, int whence, off_t *retval) {
     if (curproc->p_file[fd] == NULL) {
         return EBADF;
     }
-    kprintf("LSEEK: lseek fd is %d\n", fd);
+    kprintf("LSEEK: test lseek fd is %d\n", fd);
     int result;
     result = VOP_ISSEEKABLE(curproc->p_file[fd]->file);
     if (!result) {

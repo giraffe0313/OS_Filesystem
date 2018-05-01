@@ -86,7 +86,7 @@ main(int argc, char * argv[])
         printf("* file content okay\n");
 
         printf("**********\n* testing lseek\n");
-        r = lseek(fd, 5, SEEK_SET);
+        r = lseek(fd, 5, SEEK_END);
         if (r < 0) {
                 printf("ERROR lseek: %s\n", strerror(errno));
                 exit(1);
